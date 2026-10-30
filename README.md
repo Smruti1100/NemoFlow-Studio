@@ -1,0 +1,180 @@
+# NemoFlow Studio
+
+**Turn complex questions into evidence-backed decisions.**
+
+NemoFlow Studio is a dark, multi-agent research workspace for deep research, technical due diligence, architecture analysis, and decision support. A Nemotron model cascade plans the research, Tavily grounds it in live web results, and specialized agents produce and review a cited report.
+
+> **Built with Nebius Token Factory, NVIDIA Nemotron, and Tavily Search.**
+
+## What it does
+
+- **Plans before it searches.** Nemotron Nano breaks a research goal into 3–5 focused queries.
+- **Grounds findings in live sources.** Tavily runs advanced searches and returns raw source content for evidence extraction.
+- **Routes work across model tiers.** Nano handles planning, Super handles evidence extraction and review, and Ultra synthesizes the final report.
+- **Shows its work.** Inspect the workflow, model used, inference latency, token counts, throughput, citations, and critic assessment.
+- **Produces a practical deliverable.** Read a Markdown report with inline source references, actionable recommendations, limitations, and a rendered Mermaid diagram.
+- **Makes it easy to try.** Start with one of three judge-demo prompts, or enter a custom goal.
+
+## How the agent pipeline works
+
+```mermaid
+flowchart LR
+    A[Research goal] --> B[Nemotron Nano<br/>Planner]
+    B --> C[Tavily<br/>Advanced live search]
+    C --> D[Nemotron Super<br/>Evidence extraction]
+    D --> E[Nemotron Ultra<br/>Report synthesis]
+    E --> F[Nemotron Super<br/>Evidence review]
+    F --> G[Cited report<br/>Sources and diagram]
+```
+
+1. **Planner — Nemotron Nano:** creates 3–5 concrete research tasks and targeted search queries.
+2. **Live grounding — Tavily Search:** runs searches in parallel using `search_depth: "advanced"` and `include_raw_content: true`. Duplicate URLs are removed before the evidence is passed onward.
+3. **Evidence extraction — Nemotron Super:** condenses source material into high-signal claims while retaining source IDs and uncertainty.
+4. **Synthesis — Nemotron Ultra:** drafts the report from the user goal and extracted evidence, with inline citations and a Mermaid diagram.
+5. **Evidence review — Nemotron Super:** assesses factual support against the report’s source material and flags caveats before the deliverable is presented.
+
+All model inference uses Nebius Token Factory’s OpenAI-compatible API. The report presents concise conclusions and evidence-based rationale; it does not expose private chain-of-thought.
+
+## Project stack
+
+| Area | Technologies |
+| --- | --- |
+| Web application | Next.js App Router, React, TypeScript |
+| Styling and interaction | Tailwind CSS, Framer Motion, Lucide |
+| Reports and diagrams | `react-markdown`, `remark-gfm`, Mermaid |
+| Model inference | OpenAI SDK configured for Nebius Token Factory |
+| Live web research | Tavily Search API |
+| Run history | Browser localStorage |
+| Run updates | Server-Sent Events (SSE) |
+
+## Get started
+
+### Prerequisites
+
+- Node.js 20 or newer and npm
+- A Nebius Token Factory API key with access to the configured Nemotron model IDs
+- A Tavily Search API key
+
+### Install and configure
+
+```bash
+npm install
+```
+
+Copy `.env.example` to `.env.local`, then set the provider credentials:
+
+```dotenv
+NEBIUS_API_KEY=your_nebius_api_key
+TAVILY_API_KEY=your_tavily_api_key
+```
+
+On Windows PowerShell, create the local environment file with:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), choose a demo prompt or enter a research goal, then select **Start research**. The demo prompt buttons populate the input; start the run from the prompt form. Use **Ctrl + Enter** (or **Command + Enter** on macOS) to submit.
+
+You can also provide key overrides in **API settings**. An override is kept in the current browser tab’s `sessionStorage` and sent to the app’s server with the run request. Blank overrides use the server environment variables.
+
+## Configuration
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `NEBIUS_API_KEY` | Server-side Nebius Token Factory credential | — |
+| `NEBIUS_BASE_URL` | OpenAI-compatible Nebius API endpoint | `https://api.studio.nebius.ai/v1` |
+| `NEBIUS_MODEL_NANO` | Planner model | `nvidia/Llama-3.1-Nemotron-Nano-8B-v1` |
+| `NEBIUS_MODEL_SUPER` | Extractor and critic model | `nvidia/Llama-3.1-Nemotron-Super-49B-v1` |
+| `NEBIUS_MODEL_ULTRA` | Synthesis model | `nvidia/Llama-3.1-Nemotron-Ultra-253B-v1` |
+| `NEBIUS_FALLBACK_NANO` | Comma-separated fallback model IDs for Nano | Super model |
+| `NEBIUS_FALLBACK_SUPER` | Comma-separated fallback model IDs for Super | Nano model |
+| `NEBIUS_FALLBACK_ULTRA` | Comma-separated fallback model IDs for Ultra | Super model |
+| `TAVILY_API_KEY` | Server-side Tavily Search credential | — |
+| `AGENT_REQUEST_TIMEOUT_MS` | Timeout for provider requests, in milliseconds | `45000` |
+
+Model IDs and the Nebius base URL can be overridden for your account or deployment. The default fallback chain is Nano → Super, Super → Nano, and Ultra → Super. Setting a tier’s fallback variable replaces that tier’s default fallback list. If the configured models fail, the run reports the provider error instead of returning a fabricated success.
+
+## Workspace guide
+
+### Demo prompts
+
+The home screen includes three ready-to-edit examples:
+
+1. **Coding & Agentic:** audit a microservices architecture and investigate live CVE and security advisories.
+2. **Best Apps & Agents:** research the technical and market landscape of autonomous AI cloud infrastructure.
+3. **Personal AI Workflow:** turn a technical reading list into prioritized engineering work.
+
+These are starting prompts, not precomputed answers. Research runs use the configured live provider APIs.
+
+### Workflow and telemetry
+
+The execution panel shows the five agent stages, their current status, the planner’s task list, and the model tier used by each inference step. Per-inference telemetry includes latency, token usage, and tokens per second; the Tavily search stage reports its elapsed time.
+
+The **Smart routing savings** badge is an estimate compared with routing every model call through Ultra. It uses fixed relative Nano/Super/Ultra price and latency multipliers, not Nebius account pricing or a measured all-Ultra control run. Treat it as an illustrative routing estimate, not a billing guarantee.
+
+### Report and sources
+
+Switch between the Markdown report and the source list. Report citations link to the original Tavily results, and Mermaid code blocks are rendered as diagrams. The critic displays its evidence-alignment score and any caveats returned by the review step.
+
+### Run history and API keys
+
+- Completed reports are saved automatically in browser localStorage, with the most recent 20 runs retained.
+- User-provided API key overrides are kept in sessionStorage for the current browser tab; they are not saved with run history.
+- Runs can be cancelled from the workspace. The cancellation signal is propagated to active provider requests.
+
+## API
+
+### `POST /api/run`
+
+Starts a research run and responds with `text/event-stream`. The JSON request body accepts:
+
+```json
+{
+  "goal": "Research the current best practices for securing a multi-service web application."
+}
+```
+
+Optional key overrides are accepted in the `x-nebius-api-key` and `x-tavily-api-key` request headers. The route validates the goal (required, maximum 12,000 characters) and streams events as each stage progresses. Event types include `stage`, `plan`, `sources`, `telemetry`, `result`, and `error`.
+
+Missing credentials, provider failures, malformed planner or critic output, and empty search results are reported as run errors. Configure the keys before starting a research request.
+
+## Production checks
+
+Run the project checks and create an optimized build:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm start
+```
+
+## Deployment
+
+NemoFlow Studio can be deployed as a Node.js Next.js application to a host that supports App Router route handlers and streaming responses.
+
+1. Import the project into your hosting platform.
+2. Configure `NEBIUS_API_KEY` and `TAVILY_API_KEY` as encrypted server-side environment variables. Add model or timeout overrides if needed.
+3. Build and deploy the app using the platform’s Next.js integration or the commands above.
+4. Confirm that the deployment permits the `/api/run` route to stream SSE responses for the duration of a research run.
+5. Open the deployed app and test a demo prompt using the production credentials.
+
+The API route is configured for the Node.js runtime and declares a maximum duration of 300 seconds. Hosting providers may impose shorter execution limits or require a plan change; check the selected platform’s function-duration and streaming limits before deployment.
+
+## Security notes
+
+- Keep `.env.local` and production credentials out of version control. Never expose provider credentials through `NEXT_PUBLIC_*` variables.
+- Server environment keys remain on the server. Browser-entered overrides are sent to this application’s API route so it can authenticate provider requests.
+- Use HTTPS in production and restrict access to the app if it is deployed with shared server credentials.
+- This project does not include user accounts, server-side run storage, or a server-side secrets vault. Browser history and API-key overrides are local to the browser.
+
+## License
+
+This project is released under the MIT License. See [LICENSE](./LICENSE).
